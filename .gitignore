@@ -1,0 +1,39 @@
+# Python virtual environment
+venv/
+env/
+.env/
+.venv/
+
+# Environment variables
+.env
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Operating System
+.DS_Store
+Thumbs.db
+
+# Project specific
+/mnt/ai_models/
+*.lock
+file_hashes.json
+
+# Logs
+*.log
+logs/
