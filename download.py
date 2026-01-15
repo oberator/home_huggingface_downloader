@@ -1,6 +1,7 @@
 from huggingface_hub import snapshot_download
 import os
 import argparse
+import hashlib
 
 # === VARIABLES ===
 # Parse command line arguments
@@ -50,3 +51,38 @@ snapshot_download(
 )
 
 print(f"Model downloaded to: {download_path}")
+
+# Calculate SHA256 hash of the downloaded directory
+def calculate_directory_hash(directory_path):
+    """Calculate SHA256 hash of all files in a directory."""
+    sha256_hash = hashlib.sha256()
+    
+    # Get all files in directory recursively
+    for root, dirs, files in os.walk(directory_path):
+        # Sort files for consistent hash
+        for filename in sorted(files):
+            filepath = os.path.join(root, filename)
+            # Skip .lock files and .sha256 files
+            if filename.endswith('.lock') or filename.endswith('.sha256'):
+                continue
+            
+            try:
+                with open(filepath, 'rb') as f:
+                    # Read file in chunks to handle large files
+                    for chunk in iter(lambda: f.read(4096), b''):
+                        sha256_hash.update(chunk)
+            except (IOError, OSError) as e:
+                print(f"Warning: Could not read {filepath}: {e}")
+    
+    return sha256_hash.hexdigest()
+
+# Calculate and display the hash
+print("Calculating SHA256 hash of downloaded files...")
+directory_hash = calculate_directory_hash(download_path)
+print(f"SHA256 hash: {directory_hash}")
+
+# Store the hash in a .sha256 file within the download directory
+hash_file_path = os.path.join(download_path, ".sha256")
+with open(hash_file_path, 'w') as f:
+    f.write(directory_hash + '\n')
+print(f"SHA256 hash stored in: {hash_file_path}")
