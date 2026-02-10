@@ -1,132 +1,156 @@
 # Hugging Face Model Downloader
 
-A simple utility for downloading and managing Hugging Face models on an NFS share. This tool helps you download models from Hugging Face and store them in a centralized NFS location for easy access across your network.
+A Python utility for downloading models from Hugging Face Hub with support for custom download paths, file exclusion patterns, and integrity verification via SHA256 hashing.
 
-## Project Structure
+## Features
 
-- `mount.sh` - Script to mount the NFS share and set up permissions
-- `download.py` - Python script to download models from Hugging Face
+- **Flexible Download Paths**: Specify custom download locations
+- **File Exclusion**: Exclude specific file types or patterns during download
+- **Integrity Verification**: Automatic SHA256 hash calculation for downloaded files
+- **Resume Support**: Resume interrupted downloads
+- **Smart Downloads**: Only downloads new or changed files
+- **Secure Token Management**: Uses environment variables for authentication
 
 ## Prerequisites
 
-- Linux system with NFS client support
 - Python 3.x
-- Access to an NFS server
-- sudo privileges for mounting NFS share
+- Hugging Face account with API token
 
 ## Setup Instructions
 
-### 1. Configure NFS Share
-
-Edit `mount.sh` to set your NFS server details:
-```bash
-NFS_SERVER="192.168.1.100"  # Change to your NFS server IP
-NFS_SHARE="/path/to/share"  # Change to your NFS share path
-MOUNT_POINT="/mnt/ai_models"
-```
-
-### 2. Create Python Virtual Environment
+### 1. Install Dependencies
 
 ```bash
-# Create a new virtual environment
+# Create a new virtual environment (recommended)
 python3 -m venv venv
 
 # Activate the virtual environment
 source venv/bin/activate
 
 # Install required packages
-pip install --upgrade pip
-pip install --upgrade huggingface-hub
+pip install -r requirements.txt
 ```
 
-### 3. Mount NFS Share
+### 2. Configure Environment Variables
 
+Create a `.env` file in the project root:
 ```bash
-# Make the script executable
-chmod +x mount.sh
-
-# Run the mount script
-sudo ./mount.sh
+HUGGINGFACE_TOKEN=your_token_here
 ```
+
+To get your Hugging Face token:
+1. Go to [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
+2. Create a new token or copy an existing one
+3. Add it to your `.env` file
 
 ## Usage
 
-### Downloading Models
-
-With the virtual environment activated, use the download script:
+### Basic Download
 
 ```bash
-python3 download.py <repository-id>
+python3 download.py <repository_id> <download_path>
 ```
 
-Examples:
+### Examples
+
 ```bash
-# Download Qwen model
-python3 download.py Qwen/Qwen3-Embedding-4B
+# Download a model to a specific directory
+python3 download.py microsoft/DialoGPT-medium /path/to/download
 
-# Download GGUF model
-python3 download.py unsloth/sqwen3_GGUF
+# Download and exclude certain file types
+python3 download.py microsoft/DialoGPT-medium /path/to/download --exclude=*.safetensors,original/*
 
-# Download other models
-python3 download.py cpatonn/Qwen3-VL-8B-Instruct-AWQ-8bit
+# Download Llama model, excluding binary files
+python3 download.py meta-llama/Llama-2-7b-hf /models/llama2 --exclude=*.bin,*.pt
 ```
 
-The models will be downloaded to your NFS share in a directory structure matching the repository name:
+### Command Line Arguments
+
+- `repository_id`: Hugging Face repository ID (e.g., `microsoft/DialoGPT-medium`)
+- `download_path`: Local directory path where the model will be downloaded
+- `--exclude` (optional): Comma-separated list of patterns to exclude
+
+The script automatically creates a subdirectory structure based on the repository ID:
 ```
-/mnt/ai_models/
-├── Qwen/
-│   └── Qwen3-Embedding-4B/
-├── unsloth/
-│   └── sqwen3_GGUF/
-└── ...
+/path/to/download/
+└── microsoft/
+    └── DialoGPT-medium/
+        ├── config.json
+        ├── pytorch_model.bin
+        ├── .sha256
+        └── ...
 ```
 
-## Features
+### SHA256 Hash Verification
 
-- **Automatic Directory Structure**: Creates nested directories based on repository names
-- **Resume Support**: Can resume interrupted downloads
-- **Smart Downloads**: Only downloads new or changed files
-- **NFS Integration**: Centralized storage accessible across your network
-- **Permission Management**: Handles NFS mount permissions automatically
+After each download, the script:
+1. Calculates SHA256 hash of all downloaded files
+2. Displays the hash in the console
+3. Stores the hash in a `.sha256` file within the download directory
+
+This allows you to verify the integrity of downloaded files.
+
+## Project Structure
+
+```
+.
+├── download.py         # Main download script
+├── mount.sh           # NFS mount helper script (optional)
+├── requirements.txt   # Python dependencies
+├── .env              # Environment variables (not in git)
+├── .gitignore        # Git ignore patterns
+└── README.md         # This file
+```
 
 ## Troubleshooting
 
-### NFS Mount Issues
+### Authentication Issues
 
-If you encounter permission issues:
-1. Ensure the NFS server allows write access
-2. Check if the NFS share is properly mounted:
-   ```bash
-   mount | grep ai_models
-   ```
-3. Verify permissions:
-   ```bash
-   ls -la /mnt/ai_models
-   ```
+If you get authentication errors:
+1. Verify your token in the `.env` file
+2. Ensure the token has the correct permissions
+3. Check if the repository requires special access (e.g., gated models)
 
 ### Download Issues
 
-If downloads fail:
-1. Ensure your virtual environment is activated
-2. Check internet connection
-3. Verify the repository ID is correct
-4. Ensure sufficient disk space on NFS share
+- Ensure sufficient disk space at the download location
+- Check internet connection
+- Verify the repository ID is correct
+- For private repositories, ensure your token has access
+
+### Module Import Errors
+
+If you get `ModuleNotFoundError`:
+```bash
+pip install -r requirements.txt
+```
+
+## Advanced Usage
+
+### Using with NFS Shares
+
+If you want to download models to an NFS share:
+
+1. Mount your NFS share (see `mount.sh` for example)
+2. Use the mounted path as download location:
+   ```bash
+   python3 download.py Qwen/Qwen3-Embedding-4B /mnt/ai_models
+   ```
 
 ## Maintenance
 
-- Keep huggingface-hub updated:
-  ```bash
-  pip install --upgrade huggingface-hub
-  ```
-- Regularly check NFS mount status
-- Monitor available disk space on NFS share
-
-## Unmounting
-
-To unmount the NFS share:
+Keep dependencies up to date:
 ```bash
-sudo umount /mnt/ai_models
+pip install --upgrade -r requirements.txt
 ```
 
-## Licence
+## Security Notes
+
+- Never commit your `.env` file to version control
+- Keep your Hugging Face token confidential
+- The `.gitignore` file is configured to exclude sensitive files
+
+## License
+
 MIT
+

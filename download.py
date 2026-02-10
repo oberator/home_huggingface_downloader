@@ -2,6 +2,10 @@ from huggingface_hub import snapshot_download
 import os
 import argparse
 import hashlib
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # === VARIABLES ===
 # Parse command line arguments
@@ -21,8 +25,13 @@ parser.add_argument("--exclude", help="Comma-separated list of patterns to exclu
 
 args = parser.parse_args()
 
+# Get access token from environment variable
+access_token = os.getenv("HUGGINGFACE_TOKEN")
+if not access_token:
+    raise ValueError("HUGGINGFACE_TOKEN not found in environment variables. Please check your .env file.")
+
 download_url = args.repository_id
-download_path = args.download_path
+download_path = args.download_path+"/"+args.repository_id
 
 # Parse the comma-separated exclude patterns
 custom_excludes = []
@@ -48,6 +57,7 @@ snapshot_download(
     local_dir=download_path,
     ignore_patterns=final_ignore_patterns, # Updated to use the combined list
     force_download=False,  # Only download if files don't exist or are different
+    token=access_token
 )
 
 print(f"Model downloaded to: {download_path}")
